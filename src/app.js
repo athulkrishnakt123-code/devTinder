@@ -15,27 +15,67 @@ connectDB()
     .catch(
         (err) => console.error("Database is not connected...")
     )
-   
-    app.post("/signup", async (req, res) => {
-        
-        const userObj = {
-            firstName: "Arun",
-            lastName: "Krishna",
-            email: "arun@gmail.com",
-            age: 23,
-            gender: "Male"
-        };
-        try{
-            const user = new User(userObj)
-            await user.save();
-            res.send("Saved Successfully!!!");
-        }
-        catch(err){
-            res.status(400).send("Error happened!!"+err.message);
-        }
-        
 
-    });
+app.use(express.json());
+
+
+app.post("/signup", async (req, res) => {
+    
+    try{
+        const user = new User(req.body)
+        await user.save();
+        res.send("Saved Successfully!!!");
+    }
+    catch(err){
+        res.status(400).send("Error happened!!"+err.message);
+    }
+    
+
+});
+
+app.get("/user",async (req,res) => {
+    try{
+        const userId = req.body.id
+        const user = await User.findById(userId);
+        res.send(user);
+    }
+    catch(err){
+        res.status(404).send("Something went wrong!!!");
+    }
+    
+});
+
+app.get("/feed",async (req,res) => {
+    try{
+        const users = await User.find({});
+        res.send(users);
+    }
+    catch(err){
+        res.status(404).send("Something went wrong!!!");
+    }
+    
+});
+
+app.patch("/user/:userId", async (req,res) => {
+    try{
+        const userId = req.params?.userId;
+        const data = req.body;
+        const ALLOWED_UPDATE = ["age", "photoUrl", "skills", "about"];
+        const isAllowed = Object.keys(data).every(k => ALLOWED_UPDATE.includes(k));
+
+        if(!isAllowed){
+            throw new Error("update is not allowed");
+        };
+        const user = await User.findByIdAndUpdate(userId, data, { returnDocument: 'after', runValidators: true });
+        res.send("user updated successfully!!");
+        console.log(user);
+
+
+    }
+    catch(err){
+        res.status(404).send("Something Went wrong!!!");
+    }
+})
 
 
 
