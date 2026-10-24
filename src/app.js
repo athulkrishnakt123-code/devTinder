@@ -2,25 +2,14 @@ const express = require('express');
 const connectDB = require("./configure/database");
 const {validateSignUpData} = require('./utils/validation');
 const bcrypt = require('bcrypt');
-
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 const User = require("./models/user");
-
+const { userAuth } = require("./middleware/auth");
 const app = express();
 
-connectDB()
-    .then(
-        () => {
-            console.log("Database is connected successfully!!")
-            app.listen(3000, () => {
-                console.log("Server is listening in port 3000...");
-        })
-    })
-    .catch(
-        (err) => console.error("Database is not connected...")
-    )
-
 app.use(express.json());
-
+app.use(cookieParser());
 
 app.post("/signup", async (req, res) => {
     try{
@@ -31,7 +20,6 @@ app.post("/signup", async (req, res) => {
         //password encryption
         const { firstName, lastName, email, password, age } = req.body;
         const passwordHash = await bcrypt.hash(password, 10);
-        console.log(passwordHash);
 
         const user = new User({
             firstName,
@@ -56,63 +44,55 @@ app.post("/login", async (req, res) => {
         if(!user){
             throw new Error("Invalid Credential");
         }
-        const isPassAllowed = await bcrypt.compare(password, user.password);
-        if(!isPassAllowed){
-            throw new Error("Invalid Credential");
+        const isPassAllowed = user.validatePassword(password);
+        if(isPassAllowed){
+            //create jwt token
+            const token = user.getJWT();
+
+            //add token with cookie and send to the user
+            res.cookie("token", token, {expire: 360000 + Date.now()});
+            res.send("Login SuccessFully");
+
         }
         else{
-            res.send("Login SuccessFully");
+            throw new Error("Invalid Credential");
         }
     }catch(error){
         res.status(404).send("ERROR : " + error.message);
     }
 });
 
-app.get("/user",async (req,res) => {
+app.get("/profile", userAuth, async (req, res) => {
     try{
-        const userId = req.body.id
-        const user = await User.findById(userId);
+        const user = req.user;
         res.send(user);
+
+    }catch(error){
+        res.status(404).send("ERROR : " + error.message);
     }
-    catch(err){
-        res.status(404).send("Something went wrong!!!");
-    }
-    
 });
 
-app.get("/feed",async (req,res) => {
+app.post("/sendConnectionRequest", userAuth, async(req, res) => {
     try{
-        const users = await User.find({});
-        res.send(users);
+        const user = req.user
+        res.send(user.firstName + " has sent connection request");
+    }catch(error){
+        res.status(400).send("ERROR: "+error.message);
     }
-    catch(err){
-        res.status(404).send("Something went wrong!!!");
-    }
-    
-});
 
-app.patch("/user/:userId", async (req,res) => {
-    try{
-        const userId = req.params?.userId;
-        const data = req.body;
-        const ALLOWED_UPDATE = ["age", "photoUrl", "skills", "about"];
-        const isAllowed = Object.keys(data).every(k => ALLOWED_UPDATE.includes(k));
-
-        if(!isAllowed){
-            throw new Error("update is not allowed");
-        };
-        const user = await User.findByIdAndUpdate(userId, data, { returnDocument: 'after', runValidators: true });
-        res.send("user updated successfully!!");
-        console.log(user);
-
-
-    }
-    catch(err){
-        res.status(404).send("Something Went wrong!!!");
-    }
 })
 
-
+connectDB()
+    .then(
+        () => {
+            console.log("Database is connected successfully!!")
+            app.listen(3000, () => {
+                console.log("Server is listening in port 3000...");
+        })
+    })
+    .catch(
+        (err) => console.error("Database is not connected...")
+    )
 
 
 
