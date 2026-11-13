@@ -20,7 +20,11 @@ const validateSignUpData = (req) => {
         throw new Error("Please Enter Strong Password");
     }
 };
-
+const validatePassword = (newPassword) => {
+    if(!validator.isStrongPassword(newPassword)){
+        throw new Error("Please Enter Strong Password")
+    }
+}
 const validateEditProfileData = (req) => {
     const allowedEditFields = ["firstname", "lastName", "age", "about", "skills", "photoUrl", "gender"];
     const isEditAllowed = Object.keys(req.body).every(fields => allowedEditFields.includes(fields));
@@ -28,5 +32,6 @@ const validateEditProfileData = (req) => {
 }
 module.exports = {
     validateSignUpData,
-    validateEditProfileData
+    validateEditProfileData,
+    validatePassword
 }
