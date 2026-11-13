@@ -2,6 +2,8 @@ const express = require('express');
 const { validateEditProfileData, validatePassword } = require('../utils/validation');
 const profileRouter = express.Router();
 const { userAuth } = require("../middleware/auth");
+const bcrypt = require('bcrypt');
+const User = require('../models/user');
 
 profileRouter.get("/profile", userAuth, async (req, res) => {
     try{
@@ -20,6 +22,7 @@ profileRouter.patch('/profile/edit', userAuth, async (req, res) => {
         };
         const user = req.user;
         Object.keys(req.body).forEach(keys => user[keys] = req.body[keys]);
+        await user.save()
         res.json({
             message: `${user.firstName}, your profie is edited successfully`,           
             data: user
@@ -30,17 +33,23 @@ profileRouter.patch('/profile/edit', userAuth, async (req, res) => {
 
 });
 
-profileRouter.patch('/profile/password', userAuth, async (req, res) => {
+profileRouter.patch('/profile/password', async (req, res) => {
     try{
+        const emailId = req.body.email;
+        const user = await User.findOne({email : emailId});    
+        if(!user){
+            throw new Error("User doesnt exist")
+        }
         const newPassword = req.body.password;
         validatePassword(newPassword);
 
         const newPasswordHash = await bcrypt.hash(newPassword, 10);
-        req.user.password = newPasswordHash
-        await req.user.save();
+        user.password = newPasswordHash
+        await user.save()
         
         res.json({
-            message : `${req.user.firstName},your Password updated successfully`
+            message : `${user.firstName},your Password updated successfully`,
+            data : user
         })
     }catch(err){
         res.status(400).send(err.message);

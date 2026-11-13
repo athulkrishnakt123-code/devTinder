@@ -42,7 +42,7 @@ authRouter.post("/login", async (req, res) => {
         if(!user){
             throw new Error("Invalid Credential");
         }
-        const isPassAllowed = user.validatePassword(password);
+        const isPassAllowed = await user.validatePassword(password);
         if(isPassAllowed){
             //create jwt token
             const token = await user.getJWT();
